@@ -1,0 +1,4 @@
+eth_account==0.8.0
+mutagen==1.46.0
+python_vlc==3.0.18121
+web3==6.0.0b9
