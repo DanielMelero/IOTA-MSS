@@ -30,6 +30,7 @@ class Session:
         self.length, self.duration, self.chunks_len = self.chain.get_song_metadata(self.song_id)
         # Get session provider
         try:
+            self.dist_name = self.chain.get_user_info(dist)[1]
             ip_addr, port, cert = self.chain.get_user_info(dist)[3].split(':')
             self.server_address = (ip_addr, int(port))
             if not os.path.exists('tmp'):
@@ -61,6 +62,7 @@ class Session:
             signed_msg = f'{msg}:{self.chain.sign_message(msg)}'
             # Send data
             ssl_sock.sendall(str.encode(signed_msg))
+            # https://stackoverflow.com/questions/52139071/python-ssl-recv-being-offset-when-data-larger-than-1400
             d = ssl_sock.recv(16384)
             data = d
             while len(d) > 0:
@@ -88,7 +90,7 @@ class Session:
         print(f"""
     Amount paid:
         Author ({self.song_auth}): {auth_paid} Mi
-        Distributor: {dist_paid} Mi
+        Distributor ({self.dist_name}): {dist_paid} Mi
         Total: {total_paid} Mi
         """)
  
