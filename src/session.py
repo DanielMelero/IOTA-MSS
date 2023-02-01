@@ -1,5 +1,8 @@
+import os
+import ssl
 import socket
 import hashlib
+CRT_FILE = "tmp/other.crt"
 
 def keccak(data):
     return '0x' + hashlib.sha3_256(data).hexdigest()
@@ -27,8 +30,12 @@ class Session:
         self.length, self.duration, self.chunks_len = self.chain.get_song_metadata(self.song_id)
         # Get session provider
         try:
-            url = self.chain.get_user_info(dist)[3].split(':')
-            self.server_address = (url[0], int(url[1]))
+            ip_addr, port, cert = self.chain.get_user_info(dist)[3].split(':')
+            self.server_address = (ip_addr, int(port))
+            if not os.path.exists('tmp'):
+                os.makedirs('tmp')
+            with open(CRT_FILE, "w") as f:
+                f.write(cert)
         except:
             raise Exception(f'Invalid distributor server ({dist})')
 
@@ -40,19 +47,28 @@ class Session:
     def request_chunk(self, index):
         # Create a TCP/IP socket
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        # Create SSL context
+        context = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
+        context.verify_mode = ssl.CERT_REQUIRED
+        context.load_verify_locations(CRT_FILE)
         # Connect the socket to the server
         sock.connect(self.server_address)
+        ssl_sock = context.wrap_socket(sock)
         try:
             # Form message with session id and chunk index
             msg = f'{self.id}:{index}'
             # Sign message
             signed_msg = f'{msg}:{self.chain.sign_message(msg)}'
             # Send data
-            sock.sendall(str.encode(signed_msg))
-            data = sock.recv(self.chunk_len)
+            ssl_sock.sendall(str.encode(signed_msg))
+            d = ssl_sock.recv(16384)
+            data = d
+            while len(d) > 0:
+                d = ssl_sock.recv(16384)
+                data += d
             return data if data else None
         finally:
-            sock.close()
+            sock = ssl_sock.close()
 
     def is_valid(self, index, chunk):
         return self.chain.check_chunk(self.song_id, index, chunk)

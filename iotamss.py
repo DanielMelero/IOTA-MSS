@@ -1,7 +1,8 @@
-import glob
 import os
-import threading
+import glob
 import signal
+import warnings
+import threading
 from tkinter import filedialog
 from src.server import Server
 from src.session import Session
@@ -33,6 +34,7 @@ class User:
         self.server = None
         # Set handler for Ctrl+C signal
         signal.signal(signal.SIGINT, self.handler)
+        warnings.filterwarnings("ignore")
 
     def listen(self, song):
         _, name, auth, _ = song
